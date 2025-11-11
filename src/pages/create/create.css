@@ -1,0 +1,139 @@
+.create-page {
+  min-height: 100vh;
+  background: #f5f5f5;
+  padding: 40rpx;
+}
+
+.create-header {
+  text-align: center;
+  margin-bottom: 60rpx;
+}
+
+.header-title {
+  font-size: 48rpx;
+  color: #333;
+  margin-bottom: 16rpx;
+  font-weight: 600;
+}
+
+.header-subtitle {
+  font-size: 28rpx;
+  color: #999;
+}
+
+.create-content {
+  width: 100%;
+}
+
+.prompt-input-container {
+  margin-bottom: 48rpx;
+}
+
+.prompt-label {
+  font-size: 28rpx;
+  color: #666;
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.prompt-suggestions {
+  margin-top: 16rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.prompt-chip {
+  padding: 14rpx 20rpx;
+  background: #f3f4ff;
+  color: #4b5bd6;
+  border: 2rpx solid #e1e5ff;
+  border-radius: 999rpx;
+  font-size: 24rpx;
+  line-height: 1.2;
+}
+
+.prompt-input {
+  width: 100%;
+  min-height: 240rpx;
+  padding: 24rpx;
+  border: 2rpx solid #e0e0e0;
+  border-radius: 16rpx;
+  font-size: 30rpx;
+  font-family: inherit;
+  background: white;
+  box-sizing: border-box;
+}
+
+.prompt-input:focus {
+  border-color: #667eea;
+}
+
+.generate-button {
+  width: 100%;
+  padding: 32rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 16rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  margin-bottom: 48rpx;
+}
+
+.generate-button[disabled] {
+  opacity: 0.5;
+}
+
+.loading-container {
+  text-align: center;
+  padding: 80rpx 40rpx;
+  color: #999;
+}
+
+.loading-spinner {
+  width: 80rpx;
+  height: 80rpx;
+  border: 6rpx solid #f3f3f3;
+  border-top: 6rpx solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 32rpx;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  font-size: 28rpx;
+}
+
+.result-container {
+  margin-top: 48rpx;
+}
+
+.generated-image {
+  width: 100%;
+  border-radius: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.1);
+  margin-bottom: 32rpx;
+  display: block;
+}
+
+.publish-button {
+  width: 100%;
+  padding: 32rpx;
+  background: #52c41a;
+  color: white;
+  border: none;
+  border-radius: 16rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+}
+

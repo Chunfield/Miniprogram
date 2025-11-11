@@ -1,0 +1,14 @@
+{
+  "name": "login",
+  "version": "1.0.0",
+  "description": "Cloud function: return openid and env info",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "echo \"Deploy via WeChat DevTools\""
+  },
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}
+
+
