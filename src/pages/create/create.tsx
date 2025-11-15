@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { View, Textarea, Image, Button } from '@tarojs/components'
 import { useLoad, navigateBack, navigateTo, showToast } from '@tarojs/taro'
-import { generateImage, DEFAULT_FALLBACK_IMAGE } from '../../utils/api'
-import { isLoggedIn, getUserInfo, addToHomeGallery, addToMyGallery, type GalleryItem } from '../../utils/storage'
+import { callGenerateImage, callPublishImage, DEFAULT_FALLBACK_IMAGE, type GenerateImageResult } from '../../utils/api'
+import { isLoggedIn, getUserInfo, clearGalleryCache } from '../../utils/storage'
 import './create.css'
 
 export default function Create() {
   const [prompt, setPrompt] = useState('')
   const [loading, setLoading] = useState(false)
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null)
+  const [generatedImage, setGeneratedImage] = useState<GenerateImageResult | null>(null)
   const recommendPrompts = [
     '赛博朋克城市夜景，霓虹灯，雨夜，反射',
     '清晨的山谷薄雾，阳光穿透，宁静氛围',
@@ -35,8 +35,8 @@ export default function Create() {
     setGeneratedImage(null)
 
     try {
-      const imageUrl = await generateImage(prompt)
-      setGeneratedImage(imageUrl)
+      const result = await callGenerateImage(prompt)
+      setGeneratedImage(result)
     } catch (error) {
       console.error('生成图片失败:', error)
       showToast({
@@ -73,17 +73,23 @@ export default function Create() {
     }
 
     const userInfo = getUserInfo()
-    const newItem: GalleryItem = {
-      id: Date.now(),
-      prompt: prompt.trim(),
-      author: userInfo?.nickName || '用户',
-      image: generatedImage,
-      createdAt: Date.now()
+    try {
+      await callPublishImage({
+        prompt: prompt.trim(),
+        fileID: generatedImage.fileID,
+        imageUrl: generatedImage.imageUrl,
+        nickName: userInfo?.nickName,
+        avatarUrl: userInfo?.avatarUrl
+      })
+      clearGalleryCache()
+    } catch (error) {
+      console.error('发布失败:', error)
+      showToast({
+        title: '发布失败，请重试',
+        icon: 'none'
+      })
+      return
     }
-
-    // 添加到首页和我的画廊
-    addToHomeGallery(newItem)
-    addToMyGallery(newItem)
 
     showToast({
       title: '发布成功！',
@@ -146,9 +152,9 @@ export default function Create() {
           <View className='result-container'>
             <Image
               className='generated-image'
-              src={generatedImage}
+              src={generatedImage?.imageUrl || DEFAULT_FALLBACK_IMAGE}
               mode='widthFix'
-              onError={() => setGeneratedImage(DEFAULT_FALLBACK_IMAGE)}
+              onError={() => setGeneratedImage(prev => (prev ? { ...prev, imageUrl: DEFAULT_FALLBACK_IMAGE } : prev))}
             />
             <Button
               className='publish-button'

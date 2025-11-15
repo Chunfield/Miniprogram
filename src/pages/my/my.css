@@ -107,6 +107,46 @@
   line-height: 1.4;
 }
 
+.gallery-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16rpx;
+}
+
+.like-button {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 26rpx;
+  color: #b0b0b0;
+}
+
+.like-button.liked {
+  color: #ff5b5b;
+}
+
+.like-icon {
+  font-size: 30rpx;
+}
+
+.action-button.delete {
+  background: #fff1f0;
+  color: #ff4d4f;
+  border-radius: 32rpx;
+  border: none;
+  padding: 8rpx 24rpx;
+}
+
+.loading-more,
+.no-more {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #888;
+  font-size: 26rpx;
+  padding: 32rpx 0;
+}
+
 .empty-state {
   text-align: center;
   padding: 120rpx 40rpx;

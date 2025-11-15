@@ -1,0 +1,13 @@
+{
+  "name": "getMyImages",
+  "version": "1.0.0",
+  "description": "Cloud function: fetch personal gallery images",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "echo \"Deploy via WeChat DevTools\""
+  },
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}
+

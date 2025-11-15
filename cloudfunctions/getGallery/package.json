@@ -1,0 +1,13 @@
+{
+  "name": "getGallery",
+  "version": "1.0.0",
+  "description": "Cloud function: fetch public gallery with pagination",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "echo \"Deploy via WeChat DevTools\""
+  },
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}
+

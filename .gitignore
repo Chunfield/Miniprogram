@@ -1,8 +1,43 @@
+# 编译输出
 dist/
 deploy_versions/
 .temp/
 .rn_temp/
+
+# 依赖包
 node_modules/
+cloudfunctions/**/node_modules/
+
+# 系统文件
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# 编译缓存
 .swc
+
+# 本地配置文件
 *.local
+project.private.config.json
+
+# 日志文件
+*.log
+*.log.*
+
+# IDE 配置
+.vscode/
+.idea/
+*.code-workspace
+
+# 环境变量和密钥
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.p12
+
+# 微信开发者工具生成的文件
+project.private.config.json

@@ -1,0 +1,13 @@
+{
+  "name": "deleteImage",
+  "version": "1.0.0",
+  "description": "Cloud function: delete personal images with permission check",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "echo \"Deploy via WeChat DevTools\""
+  },
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}
+

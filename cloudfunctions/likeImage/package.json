@@ -1,0 +1,13 @@
+{
+  "name": "likeImage",
+  "version": "1.0.0",
+  "description": "Cloud function: like or unlike an image",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "echo \"Deploy via WeChat DevTools\""
+  },
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}
+

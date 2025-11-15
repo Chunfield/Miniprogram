@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { View, Image, ScrollView, Button } from '@tarojs/components'
-import { useLoad, useDidShow, getUserProfile, useRouter, navigateTo, showToast } from '@tarojs/taro'
-import { DEFAULT_FALLBACK_IMAGE } from '../../utils/api'
-import { isLoggedIn, getUserInfo, getMyGallery, setUserInfo, logout, type GalleryItem, type UserInfo } from '../../utils/storage'
+import { useLoad, useDidShow, getUserProfile, useRouter, navigateTo, showToast, showModal } from '@tarojs/taro'
+import { DEFAULT_FALLBACK_IMAGE, type GalleryItem } from '../../utils/api'
+import { isLoggedIn, getUserInfo, fetchMyGallery, setUserInfo, logout, likeImage, deleteImage, clearGalleryCache, type UserInfo } from '../../utils/storage'
 import { getOpenId, upsertUser } from '../../utils/cloud'
 import './my.css'
 
@@ -10,18 +10,23 @@ export default function My() {
   const [loggedIn, setLoggedIn] = useState(false)
   const [userInfo, setUserInfoState] = useState<UserInfo | null>(null)
   const [gallery, setGallery] = useState<GalleryItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [nextPage, setNextPage] = useState(1)
   const router = useRouter()
   const redirect = decodeURIComponent(router.params?.redirect || '')
+  const PAGE_SIZE = 20
 
   useLoad(() => {
     checkLoginStatus()
-    loadMyGallery()
+    refreshMyGallery()
   })
 
   useDidShow(() => {
     checkLoginStatus()
     if (isLoggedIn()) {
-      loadMyGallery()
+      refreshMyGallery()
     }
   })
 
@@ -34,15 +39,51 @@ export default function My() {
     }
   }
 
-  const loadMyGallery = () => {
-    const data = getMyGallery()
-    setGallery(data)
+  const refreshMyGallery = async () => {
+    if (!isLoggedIn()) {
+      setGallery([])
+      return
+    }
+    setRefreshing(true)
+    setHasMore(true)
+    setNextPage(1)
+    await loadMyGalleryPage(1, true)
+  }
+
+  const loadMyGalleryPage = async (page: number, forceRefresh = false) => {
+    if (loading) return
+    const currentUser = getUserInfo()
+    const openId = currentUser?.openId
+    if (!openId) {
+      setRefreshing(false)
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetchMyGallery({ page, pageSize: PAGE_SIZE, userOpenId: openId }, { forceRefresh })
+      setGallery((prev) => (page === 1 ? res.items : [...prev, ...res.items]))
+      const noMore = page * PAGE_SIZE >= res.total || res.items.length < PAGE_SIZE
+      setHasMore(!noMore)
+      setNextPage(page + 1)
+    } catch (error) {
+      console.error('加载个人画廊失败', error)
+      showToast({ title: '加载失败，请稍后重试', icon: 'none' })
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
   }
   
-  const handleImageError = (id: number) => {
+  const handleImageError = (imageId: string) => {
     setGallery(prev =>
-      prev.map(item => (item.id === id ? { ...item, image: DEFAULT_FALLBACK_IMAGE } : item))
+      prev.map(item => (item.imageId === imageId ? { ...item, imageUrl: DEFAULT_FALLBACK_IMAGE } : item))
     )
+  }
+
+  const handleScrollToLower = () => {
+    if (!hasMore || loading) return
+    loadMyGalleryPage(nextPage)
   }
 
   const handleLogin = async () => {
@@ -64,6 +105,7 @@ export default function My() {
         setLoggedIn(true)
         showToast({ title: '登录成功', icon: 'success' })
         postLoginRedirect()
+        refreshMyGallery()
       } catch (cloudError) {
         console.error('云开发登录失败:', cloudError)
         // 云函数调用失败时，降级到本地登录（保持兼容性）
@@ -76,6 +118,7 @@ export default function My() {
         setUserInfoState(infoBase)
         setLoggedIn(true)
         postLoginRedirect()
+        refreshMyGallery()
       }
     } catch (error) {
       console.error('登录失败:', error)
@@ -89,6 +132,7 @@ export default function My() {
       setLoggedIn(true)
       showToast({ title: '已登录（本地模式）', icon: 'success' })
       postLoginRedirect()
+      refreshMyGallery()
     }
   }
   
@@ -100,6 +144,7 @@ export default function My() {
     }
     setLoggedIn(false)
     setUserInfoState(null)
+    setGallery([])
     showToast({ title: '已退出登录', icon: 'success' })
   }
   
@@ -121,6 +166,39 @@ export default function My() {
       setTimeout(() => {
         navigateTo({ url: redirect })
       }, 300)
+    }
+  }
+
+  const handleLike = async (imageId: string, liked: boolean) => {
+    try {
+      const res = await likeImage(imageId, liked ? 'unlike' : 'like')
+      setGallery((prev) =>
+        prev.map((item) =>
+          item.imageId === imageId ? { ...item, liked: res.liked, likes: res.likes } : item
+        )
+      )
+    } catch (error) {
+      console.error('点赞失败', error)
+      showToast({ title: '操作失败', icon: 'none' })
+    }
+  }
+
+  const handleDelete = async (imageId: string) => {
+    const modal = await showModal({
+      title: '删除作品',
+      content: '确定要删除这幅作品吗？删除后不可恢复。',
+      confirmText: '删除',
+      cancelText: '取消'
+    })
+    if (!modal.confirm) return
+    try {
+      await deleteImage(imageId)
+      clearGalleryCache()
+      showToast({ title: '删除成功', icon: 'success' })
+      refreshMyGallery()
+    } catch (error) {
+      console.error('删除失败', error)
+      showToast({ title: '删除失败，请稍后重试', icon: 'none' })
     }
   }
 
@@ -164,7 +242,15 @@ export default function My() {
         )}
       </View>
       {loggedIn && (
-        <ScrollView className='my-gallery-scroll' scrollY>
+        <ScrollView
+          className='my-gallery-scroll'
+          scrollY
+          refresherEnabled
+          refresherTriggered={refreshing}
+          onRefresherRefresh={refreshMyGallery}
+          lowerThreshold={120}
+          onScrollToLower={handleScrollToLower}
+        >
           <View className='my-gallery-section'>
             <View className='section-title'>个人画廊</View>
             {gallery.length === 0 ? (
@@ -183,19 +269,37 @@ export default function My() {
             ) : (
               <View className='my-gallery-grid'>
                 {gallery.map((item) => (
-                  <View key={item.id} className='gallery-item'>
+                  <View key={item.imageId} className='gallery-item'>
                     <Image
                       className='gallery-image'
-                      src={item.image}
+                      src={item.imageUrl}
                       mode='aspectFill'
                       lazyLoad
-                      onError={() => handleImageError(item.id)}
+                      onError={() => handleImageError(item.imageId)}
                     />
                     <View className='gallery-item-info'>
                       <View className='gallery-prompt'>{item.prompt}</View>
+                      <View className='gallery-actions'>
+                        <View
+                          className={`like-button ${item.liked ? 'liked' : ''}`}
+                          onClick={() => handleLike(item.imageId, item.liked)}
+                        >
+                          <View className='like-icon'>{item.liked ? '❤️' : '🤍'}</View>
+                          <View className='like-count'>{item.likes}</View>
+                        </View>
+                        <Button
+                          className='action-button delete'
+                          size='mini'
+                          onClick={() => handleDelete(item.imageId)}
+                        >
+                          删除
+                        </Button>
+                      </View>
                     </View>
                   </View>
                 ))}
+                {loading && <View className='loading-more'>加载中...</View>}
+                {!hasMore && gallery.length > 0 && <View className='no-more'>已经到底啦</View>}
               </View>
             )}
           </View>

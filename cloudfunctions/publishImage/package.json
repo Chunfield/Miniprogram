@@ -1,0 +1,13 @@
+{
+  "name": "publishImage",
+  "version": "1.0.0",
+  "description": "Cloud function: publish generated images to database",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "echo \"Deploy via WeChat DevTools\""
+  },
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}
+

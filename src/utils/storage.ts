@@ -1,84 +1,126 @@
 import Taro from '@tarojs/taro'
+import {
+  callGetGallery,
+  callGetMyImages,
+  callLikeImage,
+  callDeleteImage,
+  type GalleryResponse,
+  type MyGalleryResponse,
+  type GalleryItem
+} from './api'
 
-// 存储键名
 const STORAGE_KEYS = {
-  HOME_GALLERY: 'homeGallery',
-  MY_GALLERY: 'myGallery',
   USER_INFO: 'userInfo',
-  IS_LOGGED_IN: 'isLoggedIn'
+  IS_LOGGED_IN: 'isLoggedIn',
+  CACHE_PREFIX: 'galleryCache'
 }
 
-// 画作数据类型
-export interface GalleryItem {
-  id: number
-  prompt: string
-  author: string
-  image: string
-  createdAt: number
-}
+const CACHE_TTL = 5 * 60 * 1000 // 5分钟缓存
 
-// 用户信息类型
 export interface UserInfo {
   nickName: string
   avatarUrl: string
   openId?: string
+  _id?: string
 }
 
-// 获取首页画作列表
-export function getHomeGallery(): GalleryItem[] {
+interface CacheEntry<T> {
+  data: T
+  expiredAt: number
+}
+
+function buildCacheKey(key: string, params?: Record<string, any>) {
+  if (!params || Object.keys(params).length === 0) return `${STORAGE_KEYS.CACHE_PREFIX}:${key}`
+  return `${STORAGE_KEYS.CACHE_PREFIX}:${key}:${JSON.stringify(params)}`
+}
+
+function readCache<T>(key: string): T | null {
   try {
-    const data = Taro.getStorageSync(STORAGE_KEYS.HOME_GALLERY)
-    return data || []
-  } catch (error) {
-    console.error('获取首页画作失败:', error)
-    return []
+    const entry: CacheEntry<T> | undefined = Taro.getStorageSync(key)
+    if (!entry) return null
+    if (entry.expiredAt < Date.now()) {
+      Taro.removeStorageSync(key)
+      return null
+    }
+    return entry.data
+  } catch {
+    return null
   }
 }
 
-// 保存首页画作列表
-export function setHomeGallery(gallery: GalleryItem[]): void {
+function writeCache<T>(key: string, data: T) {
   try {
-    Taro.setStorageSync(STORAGE_KEYS.HOME_GALLERY, gallery)
+    const entry: CacheEntry<T> = {
+      data,
+      expiredAt: Date.now() + CACHE_TTL
+    }
+    Taro.setStorageSync(key, entry)
   } catch (error) {
-    console.error('保存首页画作失败:', error)
+    console.warn('写入缓存失败', error)
   }
 }
 
-// 添加画作到首页
-export function addToHomeGallery(item: GalleryItem): void {
-  const gallery = getHomeGallery()
-  gallery.unshift(item)
-  setHomeGallery(gallery)
-}
-
-// 获取我的画廊
-export function getMyGallery(): GalleryItem[] {
+function invalidateCacheByPrefix(prefix: string) {
   try {
-    const data = Taro.getStorageSync(STORAGE_KEYS.MY_GALLERY)
-    return data || []
+    const info = Taro.getStorageInfoSync()
+    info.keys
+      .filter((key) => key.startsWith(prefix))
+      .forEach((key) => {
+        Taro.removeStorageSync(key)
+      })
   } catch (error) {
-    console.error('获取我的画廊失败:', error)
-    return []
+    console.warn('清理缓存失败', error)
   }
 }
 
-// 保存我的画廊
-export function setMyGallery(gallery: GalleryItem[]): void {
-  try {
-    Taro.setStorageSync(STORAGE_KEYS.MY_GALLERY, gallery)
-  } catch (error) {
-    console.error('保存我的画廊失败:', error)
+export async function fetchGallery(
+  params: { page?: number; pageSize?: number; userOpenId?: string } = {},
+  options: { forceRefresh?: boolean } = {}
+): Promise<GalleryResponse> {
+  const cacheKey = buildCacheKey('public', params)
+  if (!options.forceRefresh) {
+    const cached = readCache<GalleryResponse>(cacheKey)
+    if (cached) {
+      return cached
+    }
   }
+  const result = await callGetGallery(params)
+  writeCache(cacheKey, result)
+  return result
 }
 
-// 添加画作到我的画廊
-export function addToMyGallery(item: GalleryItem): void {
-  const gallery = getMyGallery()
-  gallery.unshift(item)
-  setMyGallery(gallery)
+export async function fetchMyGallery(
+  params: { page?: number; pageSize?: number; userOpenId?: string } = {},
+  options: { forceRefresh?: boolean } = {}
+): Promise<MyGalleryResponse> {
+  const cacheKey = buildCacheKey('mine', params)
+  if (!options.forceRefresh) {
+    const cached = readCache<MyGalleryResponse>(cacheKey)
+    if (cached) {
+      return cached
+    }
+  }
+  const result = await callGetMyImages(params)
+  writeCache(cacheKey, result)
+  return result
 }
 
-// 获取用户信息
+export async function likeImage(imageId: string, action: 'like' | 'unlike') {
+  const result = await callLikeImage({ imageId, action })
+  invalidateCacheByPrefix(`${STORAGE_KEYS.CACHE_PREFIX}:`)
+  return result
+}
+
+export async function deleteImage(imageId: string) {
+  const result = await callDeleteImage({ imageId })
+  invalidateCacheByPrefix(`${STORAGE_KEYS.CACHE_PREFIX}:`)
+  return result
+}
+
+export function clearGalleryCache() {
+  invalidateCacheByPrefix(`${STORAGE_KEYS.CACHE_PREFIX}:`)
+}
+
 export function getUserInfo(): UserInfo | null {
   try {
     const data = Taro.getStorageSync(STORAGE_KEYS.USER_INFO)
@@ -89,7 +131,6 @@ export function getUserInfo(): UserInfo | null {
   }
 }
 
-// 保存用户信息
 export function setUserInfo(userInfo: UserInfo): void {
   try {
     Taro.setStorageSync(STORAGE_KEYS.USER_INFO, userInfo)
@@ -99,7 +140,6 @@ export function setUserInfo(userInfo: UserInfo): void {
   }
 }
 
-// 检查是否已登录
 export function isLoggedIn(): boolean {
   try {
     return Taro.getStorageSync(STORAGE_KEYS.IS_LOGGED_IN) || false
@@ -108,13 +148,14 @@ export function isLoggedIn(): boolean {
   }
 }
 
-// 退出登录
 export function logout(): void {
   try {
     Taro.removeStorageSync(STORAGE_KEYS.USER_INFO)
     Taro.removeStorageSync(STORAGE_KEYS.IS_LOGGED_IN)
+    invalidateCacheByPrefix(`${STORAGE_KEYS.CACHE_PREFIX}:`)
   } catch (error) {
     console.error('退出登录失败:', error)
   }
 }
 
+export type { GalleryItem, GalleryResponse, MyGalleryResponse } from './api'

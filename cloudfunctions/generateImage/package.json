@@ -1,0 +1,13 @@
+{
+  "name": "generateImage",
+  "version": "1.0.0",
+  "description": "Cloud function: generate AI images (placeholder) and upload to storage",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "echo \"Deploy via WeChat DevTools\""
+  },
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}
+

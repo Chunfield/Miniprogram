@@ -81,6 +81,37 @@
   flex: 1;
 }
 
+.like-button {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  color: #b0b0b0;
+  font-size: 24rpx;
+}
+
+.like-button.liked {
+  color: #ff5b5b;
+}
+
+.like-icon {
+  font-size: 28rpx;
+}
+
+.empty-state,
+.loading-more,
+.no-more {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #888;
+  font-size: 26rpx;
+  padding: 40rpx 0;
+}
+
+.empty-icon {
+  font-size: 64rpx;
+  margin-bottom: 16rpx;
+}
+
 .fab {
   position: fixed;
   right: 40rpx;
